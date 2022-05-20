@@ -1,0 +1,13 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  client:
+      stdin_open: true
+      container_name: "nextproj"
+      build: 
+        context: .
+        dockerfile: "Dockerfile"
+        args:
+          MODE: dev
+      ports: 
+        - 3000:3000
+       
