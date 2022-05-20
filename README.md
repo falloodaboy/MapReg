@@ -17,3 +17,8 @@ This project is for learning to create polyglonal map generation using simplex a
 ## Rules
 1. Make sure to create a separate branch to for feature development
 2. Make sure to add falloodaboy to your PR for final review
+
+# Development Roadmap
+1. setup basic app window
+2. get appropriate packages
+3. generate polyglonal maps
