@@ -1,12 +1,16 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import Image from 'next/image'
 import styles from '../styles/Home.module.css'
+import Header from '../components/Header';
+import Map from '../components/Map'
+const Home = () => {
 
-const Home: NextPage = () => {
+  function reRenderMap() {
+      
+  }
+
   return (
       <>
-        
+        <Header header="Polyglonal Map Generator"/>
+        <Map />
       </>
   )
 }
