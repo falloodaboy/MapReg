@@ -2,6 +2,7 @@ import React, { createContext } from 'react'
 import styles from './Components.module.css';
 import Delaunator from 'delaunator';
 import SimplexNoise from 'simplex-noise';
+import { ClientRequest } from 'http';
 
 
 interface Polygon {
@@ -91,7 +92,7 @@ class Map extends React.Component {
   
   renderMap(): any {
     if(this.state.canvas != null) {
-        let gridSize = 20;
+        let gridSize = 10;
         let points =  this.generateMap(gridSize, 0.4);
         let delaunay = Delaunator.from(points, loc => loc.x, loc => loc.y);
         let centroids = this.calculateCentroids(points, delaunay);
@@ -110,12 +111,13 @@ class Map extends React.Component {
         };
           let elevation = this.assignElevation(map, gridSize);
           let moisture = this.assignMoisture(map, gridSize);
+
           //this.drawPoints(points, canvas, gridSize);
           //this.drawCellBoundaries(this.state.canvas, map, delaunay, gridSize);
          // this.drawCellColors(this.state.canvas, map, (r:any) => this.biomeColor(canvas, r, elevation, moisture), gridSize, elevation, delaunay);
           this.buildGraphs(map, delaunay);
-         // this.drawTriangles(ctx, gridSize, map, delaunay);
-         this.generateLine(ctx, map, gridSize);
+          this.drawTriangles(ctx, gridSize, map, delaunay, this.state.centroidedges);
+        // this.generateLine(ctx, map, gridSize);
     }
     else{
         console.log("canvas is null");
@@ -123,89 +125,187 @@ class Map extends React.Component {
    
   }
 
-  drawTriangles(ctx:any, GRIDSIZE: any, map: any, delaunay:any) {
+  checkifEqual(e1: any, e2: any){
+      let result = false;
+
+      if(e1.from.x == e2.from.x && e1.from.y == e2.from.y && e1.to.x == e2.to.x && e1.to.y == e2.to.y){ //check if the edges are in the same direction.
+          if(e1.from.x == e2.to.x && e1.from.y == e2.to.y && e1.to.x == e2.from.x && e1.to.y == e2.from.y){
+              result = true;
+          }
+      }
+
+      return result;
+  }
+
+  drawTriangles(ctx:any, GRIDSIZE: any, map: any, delaunay:any, test?:any) {
         ctx.save();
         ctx.scale(ctx.canvas.width / GRIDSIZE, ctx.canvas.height / GRIDSIZE);
         ctx.fillStyle = 'green';
         ctx.lineWidth = 0.02;
         let {centers, triangles, numEdges} = map
         let seen = new Set();
-        for(let e = 100; e < 101; e++ ){
+          //connect all of the voronoi edges together.
+        //   let perp = [];
+
+        //   for(let e = 0; e < map.triangles.length; e++){
+        //       let p = map.triangles[this.nextHalfedge(e)];
+        //       if(!seen.has(p)) {
+        //           seen.add(p);
+        //           let vertices = this.edgesAroundPoint(delaunay, e).map(e => map.centers[this.triangleOfEdge(e)]);
+        //           ctx.strokeStyle = `rgb(${Math.random()*255},${Math.random()*255}, ${Math.random()*255})`;
+        //           ctx.beginPath();
+        //           ctx.moveTo(vertices[0].x, vertices[0].y);
+        //           for(let i = 1; i < vertices.length; i++){
+        //                     ctx.lineTo(vertices[i].x, vertices[i].y);
+        //                     ctx.stroke();
+        //                     perp.push({
+        //                         from: {x: vertices[i-1].x, y: vertices[i-1].y},
+        //                         to: {x: vertices[i].x, y: vertices[i].y}
+        //                     });
+        //           }
+                  
+        //       }
+        //   }
+
+        //   for(let i =0; i < perp.length; i++){
+        //       //console.log(perp[i]);
+        //       for(let j = 0; j < perp.length; j++){
+        //           if(i !== j && this.checkifEqual(perp[i], perp[j])){
+        //               console.log("found matching edges at: " + i + " and " + j);
+        //           }
+        //       }
+        //   }
+
+        let polygons = [];
+        let alreadyDrawn:any = [];
+        for(let e = 0; e < triangles.length; e++ ){
             let p = triangles[this.nextHalfedge(e)];
 
             if(!seen.has(p)){
                 seen.add(p);
                 let vertices = this.edgesAroundPoint(delaunay, e).map(e => centers[this.triangleOfEdge(e)]);
+                polygons.push(vertices);
                 let res = this.ziggityzaggity(vertices, 5, 2);
                
-                    ctx.beginPath();
-                    ctx.moveTo(res[0].x, res[0].y);
-                    for(let i = 1; i < res.length; i++) {
-                        ctx.lineTo(res[i].x, res[i].y);
-                    }
-                    ctx.stroke();
-                
-                // ctx.beginPath();
+
+
+
                 // ctx.moveTo(vertices[0].x, vertices[0].y);
-                // for(let i= 1; i < vertices.length; i++) {
+                // for(let i = 1; i < vertices.length; i++){
                 //     ctx.lineTo(vertices[i].x, vertices[i].y);
                 // }
+
                 // ctx.stroke();
 
+                // if(res[0] != undefined){
+                //     ctx.moveTo(res[0].x, res[0].y);
+                //     for(let i = 1; i < res.length; i++) {
+                //         ctx.lineTo(res[i].x, res[i].y);
+                //     }
+                //     ctx.stroke();
+                //     ctx.closePath();
+
+                //     // ctx.strokeStyle = `rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`;
+                //     // let rad = Math.random()*0.2;
+                //     // for(let i = 0; i < vertices.length; i++){
+                //     //     ctx.beginPath()
+                //     //     ctx.arc(vertices[i].x, vertices[i].y, rad , 0, 2*Math.PI);
+                //     //     ctx.stroke();
+                //     //     ctx.closePath();
+                //     // }
+                    
+                // }
             }
+            
         }
+
+        for(let polygon of polygons){
+            ctx.beginPath();
+            ctx.strokeStyle = "black" ; //`rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`
+            ctx.moveTo(polygon[0].x, polygon[0].y);
+            for(let i = 1; i < polygon.length; i++){
+                let nSet = new Set();
+                nSet.add(polygon[i-1]);
+                nSet.add(polygon[i]);
+
+                if(alreadyDrawn.filter((set:any) => set.has(polygon[i]) && set.has(polygon[i-1])).length > 0){
+                    ctx.stroke();
+                    ctx.moveTo(polygon[i].x, polygon[i].y);
+                    // console.log("already drawn");
+                }
+                else{
+                    let test = [];
+                    test.push(polygon[i-1]);
+                    test.push(polygon[i]);
+                    let res = this.ziggityzaggity(test, 5, 1);
+                    
+                    if(res.length > 0){
+                        for(let point of res){
+                            ctx.lineTo(point.x, point.y);
+                        }
+                        
+                    }
+                    
+                    alreadyDrawn.push(nSet);
+                }
+            }
+            ctx.stroke();
+        }
+
+        
   }
 
   /**
    * Edge cases: horizontal lines and vertical lines
    * Algorithm:
    * 1. take in a set of polygon vertices, number, and amp
-   * 2. for each pair of vertices, generate random points between start and stop point.
+   * 2. for each pair of vertices, generate random points between start and stop point at even intervals.
    */
   ziggityzaggity(vertices:any[], n:number, amp:number) {
         let result = [];
         for(let i=0; i < vertices.length-1; i++){
-            let res = this.generateNoisePoints(vertices[i], vertices[i+1], n, amp);
 
+            let res = this.generateNoisePoints(vertices[i], vertices[i+1], n, amp);
             for(let point of res)
                 result.push(point);
-               // console.log(result.length);
         }
-
+       
         return result;
   }
 
   generateLine(ctx:any, map:any, GRIDSIZE:any) {
-      let p = {x: 12, y: 5};
-      let q = {x: 15, y: 9};
+      let p = {x: 18.76103162356363, y: 16.415303018639975};
+      let q = {x: 19.40029512245581, y: 16.68640906394559};
+      let r = {x: 19.660995172004124, y: 17.298924677158585}
+      let s = {x: 19.385699781288654, y: 17.716998377680905}
+      let t = {x: 18.73123161524778, y: 17.741707380606243}
+      let u = {x: 18.28130942568684, y: 17.34803440839921}
+      let v = {x: 18.2978381623974, y: 16.7201902556308}
       ctx.save()
       ctx.scale(ctx.canvas.width/ GRIDSIZE, ctx.canvas.height / GRIDSIZE);
       ctx.lineWidth = 0.02;
       let vert = [];
       vert.push(p);
       vert.push(q);
-      let res = this.ziggityzaggity(vert, 10, 1);
-      console.log(res);
+      vert.push(r);
+      vert.push(s);
+      vert.push(t);
+      vert.push(u);
+      vert.push(v);
+      let res = this.ziggityzaggity(vert, 3, 1);
       ctx.beginPath();
       ctx.moveTo(res[0].x, res[0].y)
       
       for(let point of res) {
           ctx.lineTo(point.x, point.y);     
       }
-      ctx.stroke();
+      ctx.fill();
       ctx.closePath();
-
-    //   ctx.beginPath();
-    //   for(let point of res) {
-    //     ctx!.arc(point.x , point.y, 0.09, 0, 2*Math.PI);
-    //     ctx.fill();
-    //   }
-    //   ctx.closePath();
 
   }
   generateNoisePoints(p:any, q:any, n:number, amp:number){
         let result:any[] = [];
-        
+
         //generate the slope-intercept form
         let slope  = (q.y - p.y) / (q.x - p.x);
         let intercept = (q.y) - (slope*q.x);
@@ -213,7 +313,16 @@ class Map extends React.Component {
         let min = Math.min(p.x, q.x);
         let dist = (max - min) / n;
         let curr = min;
-        result.push(p);
+
+
+        if(p.x < q.x){
+            result.push(p);
+        }
+        else{
+            result.push(q)
+        }
+           
+            
         for(let i = 1; i < n; i++) {
             curr += dist;
             let x = curr;  
@@ -221,13 +330,22 @@ class Map extends React.Component {
 
             result.push({
                 x: x,
-                y: y + Math.random()
+                y: y + Math.random()*0.25
             });
         }
+        if(p.x < q.x)
+            result.push(q);
+        else
+            result.push(p);
 
-        result.push(q);
-        console.log(result);
-        return result;
+            
+        if(p.x > q.x){
+            return result.reverse();
+        }
+        else{
+            return result;
+        }
+        
   }
 
   drawPoints(points:any, canvas:HTMLCanvasElement, gridSize:number) {
