@@ -92,7 +92,7 @@ class Map extends React.Component {
   
   renderMap(): any {
     if(this.state.canvas != null) {
-        let gridSize = 10;
+        let gridSize = 50;
         let points =  this.generateMap(gridSize, 0.4);
         let delaunay = Delaunator.from(points, loc => loc.x, loc => loc.y);
         let centroids = this.calculateCentroids(points, delaunay);
@@ -114,9 +114,9 @@ class Map extends React.Component {
 
           //this.drawPoints(points, canvas, gridSize);
           //this.drawCellBoundaries(this.state.canvas, map, delaunay, gridSize);
-         // this.drawCellColors(this.state.canvas, map, (r:any) => this.biomeColor(canvas, r, elevation, moisture), gridSize, elevation, delaunay);
+          //this.drawCellColors(this.state.canvas, map, (r:any) => this.biomeColor(canvas, r, elevation, moisture), gridSize, elevation, delaunay);
           this.buildGraphs(map, delaunay);
-          this.drawTriangles(ctx, gridSize, map, delaunay, this.state.centroidedges);
+          this.drawTriangles(ctx, gridSize, map, delaunay, this.state.centroidedges,(r:any) => this.biomeColor(canvas, r, elevation, moisture));
         // this.generateLine(ctx, map, gridSize);
     }
     else{
@@ -137,119 +137,88 @@ class Map extends React.Component {
       return result;
   }
 
-  drawTriangles(ctx:any, GRIDSIZE: any, map: any, delaunay:any, test?:any) {
+  drawTriangles(ctx:any, GRIDSIZE: any, map: any, delaunay:any, test?:any, colorFn: any) {
         ctx.save();
         ctx.scale(ctx.canvas.width / GRIDSIZE, ctx.canvas.height / GRIDSIZE);
         ctx.fillStyle = 'green';
         ctx.lineWidth = 0.02;
         let {centers, triangles, numEdges} = map
         let seen = new Set();
-          //connect all of the voronoi edges together.
-        //   let perp = [];
-
-        //   for(let e = 0; e < map.triangles.length; e++){
-        //       let p = map.triangles[this.nextHalfedge(e)];
-        //       if(!seen.has(p)) {
-        //           seen.add(p);
-        //           let vertices = this.edgesAroundPoint(delaunay, e).map(e => map.centers[this.triangleOfEdge(e)]);
-        //           ctx.strokeStyle = `rgb(${Math.random()*255},${Math.random()*255}, ${Math.random()*255})`;
-        //           ctx.beginPath();
-        //           ctx.moveTo(vertices[0].x, vertices[0].y);
-        //           for(let i = 1; i < vertices.length; i++){
-        //                     ctx.lineTo(vertices[i].x, vertices[i].y);
-        //                     ctx.stroke();
-        //                     perp.push({
-        //                         from: {x: vertices[i-1].x, y: vertices[i-1].y},
-        //                         to: {x: vertices[i].x, y: vertices[i].y}
-        //                     });
-        //           }
-                  
-        //       }
-        //   }
-
-        //   for(let i =0; i < perp.length; i++){
-        //       //console.log(perp[i]);
-        //       for(let j = 0; j < perp.length; j++){
-        //           if(i !== j && this.checkifEqual(perp[i], perp[j])){
-        //               console.log("found matching edges at: " + i + " and " + j);
-        //           }
-        //       }
-        //   }
 
         let polygons = [];
         let alreadyDrawn:any = [];
+        let rescont:any = [];
+        let trigger:any = [];
         for(let e = 0; e < triangles.length; e++ ){
             let p = triangles[this.nextHalfedge(e)];
 
             if(!seen.has(p)){
                 seen.add(p);
                 let vertices = this.edgesAroundPoint(delaunay, e).map(e => centers[this.triangleOfEdge(e)]);
+                trigger.push(p);
+                vertices.push(vertices[0]);
                 polygons.push(vertices);
-                let res = this.ziggityzaggity(vertices, 5, 2);
-               
 
-
-
-                // ctx.moveTo(vertices[0].x, vertices[0].y);
-                // for(let i = 1; i < vertices.length; i++){
-                //     ctx.lineTo(vertices[i].x, vertices[i].y);
-                // }
-
-                // ctx.stroke();
-
-                // if(res[0] != undefined){
-                //     ctx.moveTo(res[0].x, res[0].y);
-                //     for(let i = 1; i < res.length; i++) {
-                //         ctx.lineTo(res[i].x, res[i].y);
-                //     }
-                //     ctx.stroke();
-                //     ctx.closePath();
-
-                //     // ctx.strokeStyle = `rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`;
-                //     // let rad = Math.random()*0.2;
-                //     // for(let i = 0; i < vertices.length; i++){
-                //     //     ctx.beginPath()
-                //     //     ctx.arc(vertices[i].x, vertices[i].y, rad , 0, 2*Math.PI);
-                //     //     ctx.stroke();
-                //     //     ctx.closePath();
-                //     // }
-                    
-                // }
             }
             
         }
-
+        let i = 0;
         for(let polygon of polygons){
-            ctx.beginPath();
-            ctx.strokeStyle = "black" ; //`rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`
-            ctx.moveTo(polygon[0].x, polygon[0].y);
-            for(let i = 1; i < polygon.length; i++){
-                let nSet = new Set();
-                nSet.add(polygon[i-1]);
-                nSet.add(polygon[i]);
+        //    if(i <= 24){
+                
+                ctx.beginPath();
+                ctx.strokeStyle = "black" ; //`rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`
+                ctx.moveTo(polygon[0].x, polygon[0].y);
+                // let fst = `rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`;
+                ctx.fillStyle = colorFn(trigger[i]);
+                for(let i = 1; i < polygon.length; i++){
+                    let nSet = new Set();
+                    nSet.add(polygon[i-1]);
+                    nSet.add(polygon[i]);
+    
+                    if(alreadyDrawn.filter((set:any) => set.has(polygon[i]) && set.has(polygon[i-1])).length > 0){
+                        let v2 = rescont.filter((vertices:any) => vertices[0] == polygon[i] && vertices[vertices.length-1] == polygon[i-1]);
+                       let vert = v2[0];
+                       if(vert != undefined){
+                            if(vert[0] == polygon[i-1]){
+                                    for(let i = 1; i < vert.length; i++){
+                                        ctx.lineTo(vert[i].x, vert[i].y);
+                                    }
+                            }
+                            else{
+                                    for(let i = vert.length-1; i >= 0; i--){
+                                        ctx.lineTo(vert[i].x, vert[i].y);
+                                    }
+                            }
+                       }
 
-                if(alreadyDrawn.filter((set:any) => set.has(polygon[i]) && set.has(polygon[i-1])).length > 0){
-                    ctx.stroke();
-                    ctx.moveTo(polygon[i].x, polygon[i].y);
-                    // console.log("already drawn");
-                }
-                else{
-                    let test = [];
-                    test.push(polygon[i-1]);
-                    test.push(polygon[i]);
-                    let res = this.ziggityzaggity(test, 5, 1);
-                    
-                    if(res.length > 0){
-                        for(let point of res){
-                            ctx.lineTo(point.x, point.y);
-                        }
-                        
+                       
                     }
-                    
-                    alreadyDrawn.push(nSet);
+                    else{
+                        let test = [];
+                        test.push(polygon[i-1]);
+                        test.push(polygon[i]);
+                        let res = this.ziggityzaggity(test, 5, 1);
+                        if(res.length > 0){
+                            rescont.push(res);
+                            for(let point of res){
+                                ctx.lineTo(point.x, point.y);
+                            }
+                            
+                        }
+                        alreadyDrawn.push(nSet);
+                    }
                 }
-            }
-            ctx.stroke();
+                
+                ctx.mozFillRule = "evenodd";
+                ctx.fill();
+                ctx.stroke();
+    
+                ctx.closePath();
+                i += 1;
+
+           // }
+
         }
 
         
@@ -330,7 +299,7 @@ class Map extends React.Component {
 
             result.push({
                 x: x,
-                y: y + Math.random()*0.25
+                y: y + Math.random()*0.21
             });
         }
         if(p.x < q.x)
@@ -623,3 +592,82 @@ export default Map
        // console.log(points);
         return results;
  */
+
+
+                        //let res = this.ziggityzaggity(vertices, 5, 2);
+
+
+
+                // ctx.moveTo(vertices[0].x, vertices[0].y);
+                // for(let i = 1; i < vertices.length; i++){
+                //     ctx.lineTo(vertices[i].x, vertices[i].y);
+                // }
+
+                // ctx.stroke();
+
+                // if(res[0] != undefined){
+                //     ctx.moveTo(res[0].x, res[0].y);
+                //     for(let i = 1; i < res.length; i++) {
+                //         ctx.lineTo(res[i].x, res[i].y);
+                //     }
+                //     ctx.stroke();
+                //     ctx.closePath();
+
+                //     // ctx.strokeStyle = `rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`;
+                //     // let rad = Math.random()*0.2;
+                //     // for(let i = 0; i < vertices.length; i++){
+                //     //     ctx.beginPath()
+                //     //     ctx.arc(vertices[i].x, vertices[i].y, rad , 0, 2*Math.PI);
+                //     //     ctx.stroke();
+                //     //     ctx.closePath();
+                //     // }
+                    
+                // }
+
+
+
+                          //connect all of the voronoi edges together.
+        //   let perp = [];
+
+        //   for(let e = 0; e < map.triangles.length; e++){
+        //       let p = map.triangles[this.nextHalfedge(e)];
+        //       if(!seen.has(p)) {
+        //           seen.add(p);
+        //           let vertices = this.edgesAroundPoint(delaunay, e).map(e => map.centers[this.triangleOfEdge(e)]);
+        //           ctx.strokeStyle = `rgb(${Math.random()*255},${Math.random()*255}, ${Math.random()*255})`;
+        //           ctx.beginPath();
+        //           ctx.moveTo(vertices[0].x, vertices[0].y);
+        //           for(let i = 1; i < vertices.length; i++){
+        //                     ctx.lineTo(vertices[i].x, vertices[i].y);
+        //                     ctx.stroke();
+        //                     perp.push({
+        //                         from: {x: vertices[i-1].x, y: vertices[i-1].y},
+        //                         to: {x: vertices[i].x, y: vertices[i].y}
+        //                     });
+        //           }
+                  
+        //       }
+        //   }
+
+        //   for(let i =0; i < perp.length; i++){
+        //       //console.log(perp[i]);
+        //       for(let j = 0; j < perp.length; j++){
+        //           if(i !== j && this.checkifEqual(perp[i], perp[j])){
+        //               console.log("found matching edges at: " + i + " and " + j);
+        //           }
+        //       }
+        //   }
+    
+                // for(let vertices of rescont){
+                //     let fst = `rgb(${Math.random() * 255}, ${Math.random()*255}, ${Math.random()*255})`;
+                //     ctx.strokeStyle = fst;
+                //     ctx.lineWidth = 0.01;
+                //     let rd = Math.random()*0.1;
+                //     for(let point of vertices){
+                //         ctx.beginPath();
+                //         ctx.arc(point.x, point.y, rd, 0, 2*Math.PI);
+                //         ctx.stroke();
+                //         ctx.closePath();
+                //     }
+    
+                // }

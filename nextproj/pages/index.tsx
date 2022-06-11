@@ -9,7 +9,7 @@ const Home = () => {
 
   return (
       <>
-        <Header header="Polyglonal Map Generator"/>
+        <Header header="Polygonal Map Generator"/>
         <Map />
       </>
   )
